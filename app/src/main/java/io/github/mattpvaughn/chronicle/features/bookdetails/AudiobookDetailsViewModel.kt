@@ -38,6 +38,7 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.combine
 import timber.log.Timber
 import javax.inject.Inject
+import kotlin.math.roundToInt
 
 @ExperimentalCoroutinesApi
 class AudiobookDetailsViewModel(
@@ -153,8 +154,8 @@ class AudiobookDetailsViewModel(
         activeBook,
         audiobook
     ) { activeBook, currentBook ->
-        return@DoubleLiveData activeBook?.id == currentBook?.id
-                && activeBook?.id != null
+        return@DoubleLiveData activeBook?.id == currentBook?.id &&
+            activeBook?.id != null
     }
 
     /** Whether the book in the current view is playing */
@@ -167,12 +168,16 @@ class AudiobookDetailsViewModel(
         }
 
     val progressString = Transformations.map(tracks) { tracks: List<MediaItemTrack> ->
-        if (tracks.isNullOrEmpty()) {
+        if (tracks.isEmpty()) {
             return@map "0:00/0:00"
         }
         val progressStr = DateUtils.formatElapsedTime(StringBuilder(), tracks.getProgress() / 1000L)
         val durationStr = DateUtils.formatElapsedTime(StringBuilder(), tracks.getDuration() / 1000L)
         return@map "$progressStr/$durationStr"
+    }
+
+    val progressPercentageString = Transformations.map(tracks) { tracks: List<MediaItemTrack> ->
+        return@map "${tracks.getProgressPercentage()}%"
     }
 
     private var _isLoadingTracks = MutableLiveData(false)
@@ -250,8 +255,7 @@ class AudiobookDetailsViewModel(
         }
     }.asFlow()
 
-    val activeChapter = currentlyPlaying.chapter.combine(cachedChapter)
-    { activeChapter: Chapter, cachedChapter: Chapter ->
+    val activeChapter = currentlyPlaying.chapter.combine(cachedChapter) { activeChapter: Chapter, cachedChapter: Chapter ->
         Timber.i("Cached: $cachedChapter, active: $activeChapter")
         if (activeChapter != EMPTY_CHAPTER && activeChapter.trackId == cachedChapter.trackId) {
             activeChapter
@@ -260,7 +264,7 @@ class AudiobookDetailsViewModel(
         }
     }.asLiveData(viewModelScope.coroutineContext)
 
-    val isWatchedIcon : LiveData<Int> = audiobook.map {
+    val isWatchedIcon: LiveData<Int> = audiobook.map {
         if (it?.viewCount != 0L) R.drawable.ic_visibility_off else R.drawable.ic_visibility
     }
 
@@ -293,7 +297,7 @@ class AudiobookDetailsViewModel(
                 }
                 _isLoadingTracks.value = false
             } catch (e: Throwable) {
-                Timber.e("Failed to load tracks for audiobook ${bookId}: $e")
+                Timber.e("Failed to load tracks for audiobook $bookId: $e")
                 _isLoadingTracks.value = false
             }
         }
@@ -465,7 +469,8 @@ class AudiobookDetailsViewModel(
                         }
                         hideBottomSheet()
                     }
-                })
+                }
+            )
             return
         }
 
@@ -480,7 +485,6 @@ class AudiobookDetailsViewModel(
             jumpToChapterAction()
         }
     }
-
 
     private fun hideBottomSheet() {
         Timber.i("Hiding bottom sheet?")
@@ -513,7 +517,7 @@ class AudiobookDetailsViewModel(
 
         val notPlayedYet = (audiobook.value?.viewCount ?: 0) == 0L
 
-        val prompt = if(notPlayedYet) {
+        val prompt = if (notPlayedYet) {
             R.string.prompt_mark_as_played
         } else {
             R.string.prompt_mark_as_unplayed
@@ -525,7 +529,7 @@ class AudiobookDetailsViewModel(
             listener = object : BottomChooserItemListener() {
                 override fun onItemClicked(formattableString: FormattableString) {
                     if (formattableString == FormattableString.yes) {
-                        if(notPlayedYet) {
+                        if (notPlayedYet) {
                             setAudiobookWatched()
                         } else {
                             setAudiobookUnwatched()
@@ -547,8 +551,9 @@ class AudiobookDetailsViewModel(
         }
         val toast = Toast.makeText(
             Injector.get().applicationContext(), R.string.marked_as_played,
-            Toast.LENGTH_LONG)
-        toast.setGravity(Gravity.BOTTOM,0,200)
+            Toast.LENGTH_LONG
+        )
+        toast.setGravity(Gravity.BOTTOM, 0, 200)
         toast.show()
     }
 
@@ -559,8 +564,9 @@ class AudiobookDetailsViewModel(
         }
         val toast = Toast.makeText(
             Injector.get().applicationContext(), R.string.marked_as_unplayed,
-            Toast.LENGTH_LONG)
-        toast.setGravity(Gravity.BOTTOM,0,200)
+            Toast.LENGTH_LONG
+        )
+        toast.setGravity(Gravity.BOTTOM, 0, 200)
         toast.show()
     }
 
@@ -609,4 +615,3 @@ class AudiobookDetailsViewModel(
         }
     }
 }
-
